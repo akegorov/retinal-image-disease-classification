@@ -1564,9 +1564,9 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "jupyterlab", specifier = ">=4.6.5" },
-    { name = "kaggle" },
-    { name = "pre-commit" },
-    { name = "six" },
+    { name = "kaggle", specifier = ">=2.2.5" },
+    { name = "pre-commit", specifier = ">=4.7.0" },
+    { name = "six", specifier = ">=1.17.0" },
 ]
 
 [[package]]
