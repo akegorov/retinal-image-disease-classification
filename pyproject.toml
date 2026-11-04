@@ -13,6 +13,7 @@ packages = { find = { include = ["src*"] } }
 
 [dependency-groups]
 dev = [
+    "jupyterlab>=4.6.5",
     "kaggle",
     "pre-commit",
     "six",
