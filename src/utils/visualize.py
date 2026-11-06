@@ -5,10 +5,12 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from matplotlib.figure import Figure
 
-from src.data.images import load_image
-from src.utils.paths import FIGURES_DIR
+from src.data.images import crop_to_fundus, load_image
+from src.data.labels import LABELS
+from src.utils.paths import FIGURES_DIR, TRAIN_IMAGES_DIR
 
 
 def show_images(
@@ -38,3 +40,19 @@ def save_figure(fig: Figure, name: str) -> Path:
     path = FIGURES_DIR / f"{name}.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")
     return path
+
+
+def show_patient(eyes: pd.DataFrame, patient_id: int) -> Figure:
+    """Show both cropped eyes of a patient with their keywords and the patient labels.
+
+    ``eyes`` is the one-row-per-eye table built in eda/intro.ipynb.
+    """
+    rows = eyes[eyes["patient_id"] == patient_id].sort_values("eye")
+    if rows.empty:
+        raise ValueError(f"No patient with ID {patient_id}")
+    images = [crop_to_fundus(load_image(TRAIN_IMAGES_DIR / f)) for f in rows["image"]]
+    titles = [f"{e}: {', '.join(kw)}" for e, kw in zip(rows["eye"], rows["keywords"])]
+    labels = [label for label in LABELS if rows[label].iloc[0]]
+    fig = show_images(images, titles, ncols=2)
+    fig.suptitle(f"patient {patient_id}: {', '.join(labels)}", y=1.02)
+    return fig
