@@ -1,0 +1,2 @@
+# Collapse the generated lock file in GitHub PR diffs
+uv.lock linguist-generated=true
