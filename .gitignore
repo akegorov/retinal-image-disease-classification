@@ -1,0 +1,21 @@
+# environment
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.ruff_cache/
+
+# jupyter
+.ipynb_checkpoints/
+
+# data and weights
+data/*
+!data/README.md
+!data/splits/
+checkpoints/*
+!checkpoints/.gitkeep
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
