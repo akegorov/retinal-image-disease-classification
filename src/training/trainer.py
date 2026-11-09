@@ -5,12 +5,10 @@ whether x is an embedding or an image.
 """
 
 import copy
-import time
 
 import numpy as np
 import torch
 from torch import nn
-from torch.nn.utils import get_total_norm
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
@@ -85,17 +83,13 @@ def fit(
     best_pr_auc, best_epoch, best_state = -np.inf, 0, None
     bar = tqdm(range(1, epochs + 1), desc="epochs")
     for epoch in bar:
-        start = time.perf_counter()
         model.train()
-        losses, grad_norms = [], []
+        losses = []
         for batch in tqdm(train_loader, leave=False, disable=not show_batches):
             x, y = batch["x"].to(device), batch["labels"].to(device)
             loss = criterion(model(x), y)
             optimizer.zero_grad()
             loss.backward()
-            grad_norms.append(
-                get_total_norm([p.grad for p in params if p.grad is not None]).item()
-            )
             optimizer.step()
             losses.append(loss.item())
 
@@ -107,13 +101,8 @@ def fit(
             "train_loss": float(np.mean(losses)),
             "val_loss": criterion(logits.to(device), y_true.to(device)).item(),
             "lr": optimizer.param_groups[0]["lr"],
-            "epoch_time_s": time.perf_counter() - start,
-            "grad_norm": float(np.mean(grad_norms)),
-        }
-        metrics |= {
-            f"val_{k}": v
-            for k, v in val.items()
-            if k.endswith("_macro") or k.startswith("roc_auc_")
+            "val_pr_auc_macro": val["pr_auc_macro"],
+            "val_roc_auc_macro": val["roc_auc_macro"],
         }
         logger.log_metrics(metrics, step=epoch, epoch=epoch)
         bar.set_postfix(

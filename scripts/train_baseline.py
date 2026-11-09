@@ -39,6 +39,7 @@ BACKBONE = "resnet18"
 SPLITS = ["train", "val", "test"]
 OUT_DIR = OUTPUTS_DIR / "baseline"
 PREDICTIONS_DIR = OUT_DIR / "predictions"
+METRICS = ["pr_auc", "roc_auc", "f1", "precision", "recall"]
 COMET_WORKSPACE = "soulqrat"
 COMET_PROJECT = "retinal-image-disease-classification"
 Probs = dict[str, pd.DataFrame]
@@ -62,13 +63,13 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def make_loggers(kind: str, models: list[str], seed: int) -> dict[str, Logger]:
+def make_loggers(kind: str, models: list[str]) -> dict[str, Logger]:
     """Logger per baseline: a separate Comet experiment each, or one shared console."""
     if kind == "comet":
         return {
             m: CometLogger(
                 COMET_PROJECT,
-                f"{m}-seed{seed}",
+                m,
                 tags=["baseline", m],
                 workspace=COMET_WORKSPACE,
             )
@@ -219,7 +220,7 @@ def main() -> None:
 
     results = {}
     with ExitStack() as stack:
-        loggers = make_loggers(args.logger, list(runs), args.seed)
+        loggers = make_loggers(args.logger, list(runs))
         unique_loggers = list(dict.fromkeys(loggers.values()))
         for logger in unique_loggers:
             stack.enter_context(logger)
@@ -234,18 +235,25 @@ def main() -> None:
             metrics = compute_metrics(y_test, probs["test"].to_numpy(), thresholds)
             results[name] = metrics
 
-            logger.log_metrics(
+            logger.log_params(
                 {f"threshold/{k}": float(t) for k, t in zip(LABELS, thresholds)}
-                | {f"test_{k}": v for k, v in metrics.items()}
             )
+            logger.log_metrics(
+                {f"test_{m}_macro": metrics[f"{m}_macro"] for m in METRICS}
+            )
+            per_class = pd.DataFrame(
+                {m: [metrics[f"{m}_{c}"] for c in LABELS] for m in METRICS},
+                index=pd.Index(LABELS, name="class"),
+            )
+            per_class["threshold"] = thresholds
+            logger.log_table("test_per_class", per_class)
             if name != "prior":
                 logger.log_model(name, checkpoint_path(name))
             PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
             for s in ["val", "test"]:
                 probs[s].to_csv(PREDICTIONS_DIR / f"{name}_{s}.csv")
 
-        macro = ["pr_auc", "roc_auc", "f1", "precision", "recall"]
-        columns = [f"{m}_macro" for m in macro] + [f"pr_auc_{c}" for c in LABELS]
+        columns = [f"{m}_macro" for m in METRICS] + [f"pr_auc_{c}" for c in LABELS]
         table = pd.DataFrame(results).T[columns]
         table.index.name = "model"
         OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -253,9 +261,7 @@ def main() -> None:
 
         report = (
             f"Test metrics, patient level ({SPLIT}, {len(truth['test'])} patients):\n"
-            f"{table.round(3).to_string()}\n"
-            "Note: val is used both to choose the best epoch and to choose F1 "
-            "thresholds; test is used only once, for this table."
+            f"{table.round(3).to_string()}"
         )
         for logger in unique_loggers:
             logger.log_text("baseline_metrics", report)

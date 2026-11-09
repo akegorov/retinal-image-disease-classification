@@ -7,6 +7,7 @@ comet_ml finds the API key itself: the COMET_API_KEY environment variable or
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from matplotlib.figure import Figure
 
 from src.loggers.base import Logger
@@ -45,6 +46,9 @@ class CometLogger(Logger):
 
     def log_text(self, name: str, text: str) -> None:
         self.experiment.log_text(text, metadata={"name": name})
+
+    def log_table(self, name: str, table: pd.DataFrame) -> None:
+        self.experiment.log_table(f"{name}.csv", tabular_data=table)
 
     def log_figure(self, name: str, fig: Figure, step: int | None = None) -> None:
         self.experiment.log_figure(figure_name=name, figure=fig, step=step)

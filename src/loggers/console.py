@@ -2,13 +2,14 @@
 
 from typing import Any
 
+import pandas as pd
 from tqdm.auto import tqdm
 
 from src.loggers.base import Logger
 
 
 class ConsoleLogger(Logger):
-    """Prints params, metrics and texts with tqdm.write; figures and models unsupported.
+    """Prints params, metrics, texts and tables with tqdm.write; no figures or models.
 
     Params are collected and printed as one block before the next metrics or text.
     Per-epoch metrics are printed every ``print_every`` epochs; the latest skipped epoch
@@ -52,6 +53,10 @@ class ConsoleLogger(Logger):
     def log_text(self, name: str, text: str) -> None:
         self._flush()
         tqdm.write(f"{name}:\n{text}")
+
+    def log_table(self, name: str, table: pd.DataFrame) -> None:
+        self._flush()
+        tqdm.write(f"{name}:\n{table.to_string()}")
 
     def finish(self) -> None:
         self._flush()

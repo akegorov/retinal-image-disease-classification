@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from matplotlib.figure import Figure
 
 from src.loggers.base import Logger
@@ -23,6 +24,9 @@ class NoOpLogger(Logger):
         pass
 
     def log_text(self, name: str, text: str) -> None:
+        pass
+
+    def log_table(self, name: str, table: pd.DataFrame) -> None:
         pass
 
     def log_figure(self, name: str, fig: Figure, step: int | None = None) -> None:

@@ -5,11 +5,12 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, ClassVar, Self
 
+import pandas as pd
 from matplotlib.figure import Figure
 
 
 class Logger(ABC):
-    """Logs params, metrics, texts, figures and model files of one experiment."""
+    """Logs params, metrics, texts, tables, figures and models of one experiment."""
 
     _warned: ClassVar[set[tuple[str, str]]] = set()
 
@@ -29,6 +30,9 @@ class Logger(ABC):
 
     def log_text(self, name: str, text: str) -> None:
         self._unsupported("log_text")
+
+    def log_table(self, name: str, table: pd.DataFrame) -> None:
+        self._unsupported("log_table")
 
     def log_figure(self, name: str, fig: Figure, step: int | None = None) -> None:
         self._unsupported("log_figure")
