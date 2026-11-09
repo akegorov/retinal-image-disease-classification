@@ -13,7 +13,6 @@ Usage: uv run python scripts/train_baseline.py [--logger none|console|comet]
 """
 
 import argparse
-from contextlib import ExitStack
 from pathlib import Path
 
 import numpy as np
@@ -63,20 +62,13 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def make_loggers(kind: str, models: list[str]) -> dict[str, Logger]:
-    """Logger per baseline: a separate Comet experiment each, or one shared console."""
+def make_logger(kind: str, model: str) -> Logger:
+    """New logger for one baseline: its own Comet experiment, console or no-op."""
     if kind == "comet":
-        return {
-            m: CometLogger(
-                COMET_PROJECT,
-                m,
-                tags=["baseline", m],
-                workspace=COMET_WORKSPACE,
-            )
-            for m in models
-        }
-    shared = ConsoleLogger() if kind == "console" else NoOpLogger()
-    return dict.fromkeys(models, shared)
+        return CometLogger(
+            COMET_PROJECT, model, tags=["baseline", model], workspace=COMET_WORKSPACE
+        )
+    return ConsoleLogger() if kind == "console" else NoOpLogger()
 
 
 def checkpoint_path(name: str) -> Path:
@@ -219,13 +211,9 @@ def main() -> None:
     )
 
     results = {}
-    with ExitStack() as stack:
-        loggers = make_loggers(args.logger, list(runs))
-        unique_loggers = list(dict.fromkeys(loggers.values()))
-        for logger in unique_loggers:
-            stack.enter_context(logger)
-        for name, run in runs.items():
-            logger = loggers[name]
+    # Comet allows one active experiment per process: open each right before its model.
+    for name, run in runs.items():
+        with make_logger(args.logger, name) as logger:
             logger.log_params(run_params | {"model": name})
             probs = run(logger)
             for s in ["val", "test"]:
@@ -249,24 +237,19 @@ def main() -> None:
             logger.log_table("test_per_class", per_class)
             if name != "prior":
                 logger.log_model(name, checkpoint_path(name))
-            PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
-            for s in ["val", "test"]:
-                probs[s].to_csv(PREDICTIONS_DIR / f"{name}_{s}.csv")
+        PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
+        for s in ["val", "test"]:
+            probs[s].to_csv(PREDICTIONS_DIR / f"{name}_{s}.csv")
 
-        columns = [f"{m}_macro" for m in METRICS] + [f"pr_auc_{c}" for c in LABELS]
-        table = pd.DataFrame(results).T[columns]
-        table.index.name = "model"
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        table.to_csv(OUT_DIR / "metrics.csv", float_format="%.4f")
-
-        report = (
-            f"Test metrics, patient level ({SPLIT}, {len(truth['test'])} patients):\n"
-            f"{table.round(3).to_string()}"
-        )
-        for logger in unique_loggers:
-            logger.log_text("baseline_metrics", report)
-        if args.logger != "console":
-            print(report)
+    columns = [f"{m}_macro" for m in METRICS] + [f"pr_auc_{c}" for c in LABELS]
+    table = pd.DataFrame(results).T[columns]
+    table.index.name = "model"
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    table.to_csv(OUT_DIR / "metrics.csv", float_format="%.4f")
+    print(
+        f"Test metrics, patient level ({SPLIT}, {len(truth['test'])} patients):\n"
+        f"{table.round(3).to_string()}"
+    )
     print(f"Saved {OUT_DIR / 'metrics.csv'} and {PREDICTIONS_DIR}/")
 
 
