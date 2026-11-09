@@ -39,6 +39,8 @@ BACKBONE = "resnet18"
 SPLITS = ["train", "val", "test"]
 OUT_DIR = OUTPUTS_DIR / "baseline"
 PREDICTIONS_DIR = OUT_DIR / "predictions"
+COMET_WORKSPACE = "soulqrat"
+COMET_PROJECT = "retinal-image-disease-classification"
 Probs = dict[str, pd.DataFrame]
 
 
@@ -64,7 +66,12 @@ def make_loggers(kind: str, models: list[str], seed: int) -> dict[str, Logger]:
     """Logger per baseline: a separate Comet experiment each, or one shared console."""
     if kind == "comet":
         return {
-            m: CometLogger("retinal-odir", f"{m}-seed{seed}", tags=["baseline", m])
+            m: CometLogger(
+                COMET_PROJECT,
+                f"{m}-seed{seed}",
+                tags=["baseline", m],
+                workspace=COMET_WORKSPACE,
+            )
             for m in models
         }
     shared = ConsoleLogger() if kind == "console" else NoOpLogger()
