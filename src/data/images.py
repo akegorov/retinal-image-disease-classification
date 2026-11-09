@@ -1,4 +1,4 @@
-"""Fundus image loading and background removal."""
+"""Fundus image loading, background removal and canonical resizing."""
 
 from pathlib import Path
 
@@ -48,3 +48,19 @@ def crop_to_fundus(
     if fill_background:
         crop = np.where(mask[y : y + h, x : x + w, None], crop, 0).astype(img.dtype)
     return crop
+
+
+def pad_to_square(img: np.ndarray) -> np.ndarray:
+    """Pad with black to a square, keeping the image centered."""
+    h, w = img.shape[:2]
+    side = max(h, w)
+    top, left = (side - h) // 2, (side - w) // 2
+    return cv2.copyMakeBorder(
+        img, top, side - h - top, left, side - w - left, cv2.BORDER_CONSTANT, value=0
+    )
+
+
+def to_canonical(img: np.ndarray, size: int) -> np.ndarray:
+    """crop_to_fundus -> pad_to_square -> resize to (size, size) with INTER_AREA."""
+    square = pad_to_square(crop_to_fundus(img))
+    return cv2.resize(square, (size, size), interpolation=cv2.INTER_AREA)

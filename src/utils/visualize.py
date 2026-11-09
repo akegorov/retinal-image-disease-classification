@@ -20,7 +20,7 @@ def show_images(
 ) -> Figure:
     """Show RGB arrays or image files in a grid and return the figure."""
     ncols = min(ncols, len(images_or_paths))
-    nrows = -(-len(images_or_paths) // ncols)  # ceil division
+    nrows = -(-len(images_or_paths) // ncols)
     fig, axes = plt.subplots(
         nrows, ncols, figsize=(3.5 * ncols, 3.5 * nrows), squeeze=False
     )
@@ -45,7 +45,7 @@ def save_figure(fig: Figure, name: str) -> Path:
 def show_patient(eyes: pd.DataFrame, patient_id: int) -> Figure:
     """Show both cropped eyes of a patient with their keywords and the patient labels.
 
-    ``eyes`` is the one-row-per-eye table built in eda/intro.ipynb.
+    ``eyes`` is the one-row-per-eye table from ``src.data.labels.load_eyes``.
     """
     rows = eyes[eyes["patient_id"] == patient_id].sort_values("eye")
     if rows.empty:

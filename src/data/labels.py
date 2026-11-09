@@ -6,10 +6,14 @@ The organizers' patient labels follow exactly from the per-eye keywords with thi
 
 import re
 from collections.abc import Iterable
+from pathlib import Path
+
+import pandas as pd
+
+from src.utils.paths import ANNOTATIONS_XLSX
 
 LABELS: list[str] = ["N", "D", "G", "C", "A", "H", "M", "O"]
 
-# Image-quality remarks, not diagnoses.
 QUALITY_KEYWORDS: frozenset[str] = frozenset(
     {
         "lens dust",
@@ -21,8 +25,6 @@ QUALITY_KEYWORDS: frozenset[str] = frozenset(
     }
 )
 
-# (regex, label), first match wins. H and M come before D: "hypertensive retinopathy"
-# and "myopic retinopathy" also contain "retinopathy". No match -> O.
 _RULES: list[tuple[str, str]] = [
     ("^normal fundus$", "N"),
     ("hypertensive", "H"),
@@ -65,3 +67,31 @@ def eye_labels(keywords: str | Iterable[str]) -> dict[str, int]:
 def patient_labels(left: dict[str, int], right: dict[str, int]) -> dict[str, int]:
     """Union of the two eyes' diseases; N = 1 only if neither eye has one."""
     return _labels({label for label in LABELS[1:] if left[label] or right[label]})
+
+
+def load_eyes(path: Path = ANNOTATIONS_XLSX) -> pd.DataFrame:
+    """One row per eye from the ODIR-5K annotations, sorted by (patient_id, eye).
+
+    Patient labels ``N..O`` come from ``data.xlsx``, eye labels ``eye_N..eye_O`` from
+    the eye's keywords. Full image path: ``TRAIN_IMAGES_DIR / image``.
+    """
+    df = pd.read_excel(path)
+    eyes = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "patient_id": df["ID"],
+                    "eye": eye,
+                    "image": df[f"{side}-Fundus"],
+                    "age": df["Patient Age"],
+                    "sex": df["Patient Sex"],
+                    "keywords": df[f"{side}-Diagnostic Keywords"].map(split_keywords),
+                }
+            ).join(df[LABELS])
+            for eye, side in [("left", "Left"), ("right", "Right")]
+        ],
+        ignore_index=True,
+    )
+    eye_cols = pd.DataFrame(eyes["keywords"].map(eye_labels).tolist())[LABELS]
+    eyes = eyes.join(eye_cols.add_prefix("eye_"))
+    return eyes.sort_values(["patient_id", "eye"], ignore_index=True)
