@@ -8,7 +8,9 @@ import numpy as np
 
 def load_image(path: str | Path) -> np.ndarray:
     """Read an image as an RGB uint8 array of shape (H, W, 3)."""
-    img = cv2.imread(str(path))
+    # Decode bytes instead of passing a Unicode path to OpenCV (Windows).
+    data = np.frombuffer(Path(path).read_bytes(), dtype=np.uint8)
+    img = cv2.imdecode(data, cv2.IMREAD_COLOR) if data.size else None
     if img is None:
         raise FileNotFoundError(f"Cannot read image: {path}")
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
