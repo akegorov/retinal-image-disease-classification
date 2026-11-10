@@ -12,6 +12,7 @@ ANNOTATIONS_XLSX = ODIR_DIR / "data.xlsx"
 
 DATA_PROCESSED = PROJECT_ROOT / "data" / "processed"
 EMBEDDINGS_DIR = DATA_PROCESSED / "embeddings"
+IMAGE_STATS_CSV = DATA_PROCESSED / "image_stats.csv"
 SPLITS_DIR = PROJECT_ROOT / "data" / "splits"
 REPORTS_DIR = PROJECT_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"

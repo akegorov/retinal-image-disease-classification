@@ -64,3 +64,8 @@ def to_canonical(img: np.ndarray, size: int) -> np.ndarray:
     """crop_to_fundus -> pad_to_square -> resize to (size, size) with INTER_AREA."""
     square = pad_to_square(crop_to_fundus(img))
     return cv2.resize(square, (size, size), interpolation=cv2.INTER_AREA)
+
+
+def load_canonical(path: str | Path, size: int = 256) -> np.ndarray:
+    """load_image -> to_canonical: an RGB (size, size, 3) image for display."""
+    return to_canonical(load_image(path), size)
